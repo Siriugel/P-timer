@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pranayama Studio</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#e0f7fa" id="themeColorMeta">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600&display=swap');
+
+        body {
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, #e0f7fa 0%, #e8f5e9 100%);
+            overscroll-behavior: none;
+            transition: background 1.5s ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body.meditation-mode {
+            background: #0f172a; /* Deep Slate/Black */
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+            transition: all 1.5s ease;
+        }
+
+        .meditation-mode .glass-panel {
+            background: rgba(15, 23, 42, 0.6); /* Darker glass */
+            border-color: rgba(255, 255, 255, 0.1);
+            box-shadow: none;
+        }
+
+        .breath-circle {
+            transition: transform 0.1s linear, box-shadow 0.3s ease, filter 0.5s ease, background 1.5s ease;
+            will-change: transform, filter;
+        }
+
+        /* The Spanda Animation: Subtle movement in darkness */
+        @keyframes spanda {
+            0% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+            50% { transform: scale(1.05); opacity: 0.9; box-shadow: 0 0 30px rgba(15, 23, 42, 0.8); }
+            100% { transform: scale(1); opacity: 0.8; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
+        }
+
+        .meditation-mode .breath-circle {
+            background: #1e293b; /* Very dark slate */
+            box-shadow: 0 0 0 rgba(0,0,0,0); /* Remove glowing shadow */
+            animation: spanda 8s infinite ease-in-out; /* Slow, deep breathing */
+        }
+
+        .meditation-mode .text-slate-700, 
+        .meditation-mode .text-slate-600 {
+            color: #94a3b8; /* Muted text for dark mode */
+        }
+
+        /* Hide non-essentials in meditation mode */
+        .meditation-mode .hide-in-zen {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 1s ease;
+        }
+
+        /* Animation for cycle counter update */
+        @keyframes pop {
+            0% { transform: scale(1); color: #475569; }
+            50% { transform: scale(1.5); color: #0ea5e9; }
+            100% { transform: scale(1); color: #475569; }
+        }
+
+        .pop-anim {
+            animation: pop 0.4s ease-out;
+        }
+
+        /* Custom form elements */
+        select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 0.5rem center;
+            background-repeat: no-repeat;
+            background-size: 1.5em 1.5em;
+            padding-right: 2.5rem;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none; 
+            background: transparent; 
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 20px;
+            width: 20px;
+            border-radius: 50%;
+            background: #0ea5e9;
+            cursor: pointer;
+            margin-top: -8px; 
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #cbd5e1;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 text-slate-700 transition-colors duration-1000">
+
+    <div class="glass-panel w-full max-w-md rounded-3xl p-8 relative overflow-hidden flex flex-col items-center justify-between min-h-[650px]">
+        
+        <!-- Header & Mode Selection -->
+        <div class="w-full flex justify-between items-center z-10 mb-2 hide-in-zen">
+            <div class="relative group">
+                <select id="modeSelect" class="bg-transparent text-lg font-medium text-slate-700 border-none focus:ring-0 cursor-pointer pr-8 py-1 hover:text-sky-600 transition-colors">
+                    <option value="nadi">Nadi Shodhana</option>
+                    <option value="sama">Sama Vritti</option>
+                </select>
+                <div class="h-0.5 w-full bg-sky-500 scale-x-0 group-hover:scale-x-100 transition-transform origin-left"></div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                 <button id="soundToggle" class="text-slate-400 hover:text-sky-500 transition-colors">
+                    <i class="fas fa-volume-up text-lg"></i>
+                </button>
+                <button id="settingsToggle" class="text-slate-400 hover:text-sky-500 transition-colors">
+                    <i class="fas fa-cog text-lg"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Ratio Display Badge -->
+        <div class="mb-4 hide-in-zen">
+            <span id="ratioBadge" class="px-3 py-1 rounded-full text-xs font-bold tracking-widest bg-slate-100 text-slate-400 uppercase">
+                Ratio 1:4:2
+            </span>
+        </div>
+
+        <!-- Settings Modal (Overlay) -->
+        <div id="settingsPanel" class="absolute inset-0 bg-white/95 z-30 flex flex-col justify-center items-center p-8 transition-opacity duration-300 opacity-0 pointer-events-none text-slate-700">
+            <h2 class="text-2xl font-light mb-8">Settings</h2>
+            
+            <div class="w-full mb-8">
+                <label class="block text-sm font-bold text-slate-400 mb-2 uppercase tracking-wider">Base Unit (Seconds)</label>
+                <div class="flex items-center gap-4">
+                    <span class="text-2xl font-light w-8 text-center" id="baseUnitDisplay">4</span>
+                    <input type="range" id="baseUnitInput" min="2" max="10" value="4" step="1" class="w-full">
+                </div>
+                <div id="ratioExplainer" class="text-xs text-slate-400 mt-4 leading-relaxed p-4 bg-slate-50 rounded-xl">
+                    <!-- Dynamic text injected by JS -->
+                </div>
+            </div>
+
+            <button id="closeSettings" class="px-8 py-3 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-600 transition-colors">
+                Apply & Close
+            </button>
+        </div>
+
+        <!-- Main Visualizer -->
+        <div class="relative w-64 h-64 flex items-center justify-center my-4">
+            <!-- Background Rings (Fade out in Zen) -->
+            <div class="absolute w-full h-full rounded-full border border-sky-100/50 scale-100 hide-in-zen"></div>
+            <div class="absolute w-full h-full rounded-full border border-sky-100/50 scale-75 hide-in-zen"></div>
+            <div class="absolute w-full h-full rounded-full border border-sky-100/50 scale-50 hide-in-zen"></div>
+
+            <!-- The Breathing Orb -->
+            <div id="breathOrb" class="breath-circle w-32 h-32 rounded-full bg-gradient-to-br from-sky-300 to-emerald-300 shadow-[0_0_40px_rgba(56,189,248,0.3)] relative z-10 flex items-center justify-center text-white">
+                <div class="text-center">
+                    <span id="timerDisplay" class="text-3xl font-light block transition-opacity duration-1000">0</span>
+                    <span id="timerUnit" class="text-[10px] opacity-80 uppercase tracking-widest transition-opacity duration-1000">Sec</span>
+                </div>
+            </div>
+
+            <!-- Progress Arc SVG (Fade out in Zen) -->
+            <svg class="absolute inset-0 w-full h-full -rotate-90 pointer-events-none hide-in-zen">
+                <circle cx="128" cy="128" r="120" stroke="#f1f5f9" stroke-width="4" fill="none" />
+                <circle id="progressRing" cx="128" cy="128" r="120" stroke="#0ea5e9" stroke-width="4" fill="none" stroke-dasharray="753.6" stroke-dashoffset="753.6" stroke-linecap="round" class="transition-all duration-100" />
+            </svg>
+        </div>
+
+        <!-- Instructions & Status -->
+        <div class="text-center h-24 flex flex-col justify-center">
+            <h2 id="phaseLabel" class="text-2xl font-medium text-slate-700 mb-1 h-8 transition-opacity duration-1000">Ready</h2>
+            <p id="subInstruction" class="text-slate-400 text-sm h-5 font-light transition-opacity duration-1000">Select mode and begin</p>
+        </div>
+
+        <!-- Stats (Fade out in Zen) -->
+        <div class="grid grid-cols-2 gap-8 w-full border-t border-slate-100 pt-6 hide-in-zen">
+            <div class="text-center">
+                <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Cycles</p>
+                <p id="cycleCount" class="text-xl font-medium text-slate-600 transition-transform">0</p>
+            </div>
+            <div class="text-center">
+                <p class="text-xs text-slate-400 uppercase tracking-wider mb-1">Total Time</p>
+                <p id="totalTime" class="text-xl font-medium text-slate-600">00:00</p>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="mt-8 flex gap-4 w-full justify-center relative">
+            
+            <!-- Standard Controls -->
+            <div id="standardControls" class="flex gap-4 transition-all duration-500">
+                <button id="resetBtn" class="w-12 h-12 rounded-full border border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-500 flex items-center justify-center transition-all disabled:opacity-50">
+                    <i class="fas fa-undo"></i>
+                </button>
+                <button id="toggleBtn" class="w-16 h-16 rounded-full bg-sky-500 hover:bg-sky-400 text-white shadow-lg shadow-sky-200 flex items-center justify-center text-xl transition-all transform hover:scale-105 active:scale-95">
+                    <i class="fas fa-play pl-1"></i>
+                </button>
+            </div>
+
+            <!-- Zen/Meditation Button (Visible only when running) -->
+            <button id="zenBtn" class="absolute right-0 top-2 w-12 h-12 rounded-full text-slate-300 hover:text-indigo-400 hover:bg-indigo-50 transition-all opacity-0 pointer-events-none transform scale-75" title="Transition to Meditation">
+                <i class="fas fa-spa text-xl"></i>
+            </button>
+            
+            <!-- Exit Zen Button (Visible only in Zen mode) -->
+            <button id="exitZenBtn" class="absolute bottom-[-10px] px-6 py-2 rounded-full border border-slate-700 text-slate-500 hover:text-slate-300 hover:border-slate-500 text-xs uppercase tracking-widest transition-all opacity-0 pointer-events-none">
+                End Meditation
+            </button>
+
+        </div>
+
+    </div>
+
+    <script>
+        // --- Service Worker Registration ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                .then(registration => {
+                    console.log('SW registered:', registration);
+                })
+                .catch(error => {
+                    console.log('SW registration failed:', error);
+                });
+            });
+        }
+
+        // --- Configurations ---
+
+        const MODES = {
+            nadi: {
+                name: "Nadi Shodhana",
+                ratioText: "Ratio 1:4:2",
+                description: "The classic purification channel. 1 unit inhale, 4 units hold, 2 units exhale.",
+                getPhases: () => [
+                    { name: "Inhale Left", ratio: 1, type: 'inhale', hand: 'Close Right' },
+                    { name: "Hold (Antara)", ratio: 4, type: 'hold-full', hand: 'Both Closed' },
+                    { name: "Exhale Right", ratio: 2, type: 'exhale', hand: 'Open Right' },
+                    { name: "Inhale Right", ratio: 1, type: 'inhale', hand: 'Keep Right Open' },
+                    { name: "Hold (Antara)", ratio: 4, type: 'hold-full', hand: 'Both Closed' },
+                    { name: "Exhale Left", ratio: 2, type: 'exhale', hand: 'Open Left' }
+                ]
+            },
+            sama: {
+                name: "Sama Vritti",
+                ratioText: "Ratio 1:1:1:1",
+                description: "Box Breathing. Equal duration for Inhale, Internal Retention, Exhale, and External Retention.",
+                getPhases: () => [
+                    { name: "Inhale", ratio: 1, type: 'inhale', hand: 'Expand Belly' },
+                    { name: "Hold (Antara)", ratio: 1, type: 'hold-full', hand: 'Internal Retention' },
+                    { name: "Exhale", ratio: 1, type: 'exhale', hand: 'Contract Belly' },
+                    { name: "Hold (Bahya)", ratio: 1, type: 'hold-empty', hand: 'External Retention' }
+                ]
+            }
+        };
+
+        // --- State ---
+        let currentMode = 'nadi';
+        let phases = MODES.nadi.getPhases();
+        
+        let isRunning = false;
+        let isZenMode = false; // New State
+        let baseUnit = 4; // seconds
+        let currentPhaseIndex = 0;
+        let phaseStartTime = 0;
+        let cycles = 0;
+        let sessionStartTime = 0;
+        let totalElapsedPaused = 0;
+        let lastPauseTime = 0;
+        let animationFrameId;
+        let soundEnabled = true;
+        let lastPhaseProgress = 0;
+        let zenStartTime = 0;
+
+        // Audio Context
+        let audioCtx;
+
+        // --- DOM Elements ---
+        const toggleBtn = document.getElementById('toggleBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const zenBtn = document.getElementById('zenBtn');
+        const exitZenBtn = document.getElementById('exitZenBtn');
+        const standardControls = document.getElementById('standardControls');
+        
+        const phaseLabel = document.getElementById('phaseLabel');
+        const subInstruction = document.getElementById('subInstruction');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const timerUnit = document.getElementById('timerUnit');
+        const cycleCountDisplay = document.getElementById('cycleCount');
+        const totalTimeDisplay = document.getElementById('totalTime');
+        const breathOrb = document.getElementById('breathOrb');
+        const progressRing = document.getElementById('progressRing');
+        const soundToggle = document.getElementById('soundToggle');
+        const modeSelect = document.getElementById('modeSelect');
+        const ratioBadge = document.getElementById('ratioBadge');
+        const body = document.body;
+        const themeColorMeta = document.getElementById('themeColorMeta');
+        
+        // Settings Elements
+        const settingsToggle = document.getElementById('settingsToggle');
+        const settingsPanel = document.getElementById('settingsPanel');
+        const closeSettings = document.getElementById('closeSettings');
+        const baseUnitInput = document.getElementById('baseUnitInput');
+        const baseUnitDisplay = document.getElementById('baseUnitDisplay');
+        const ratioExplainer = document.getElementById('ratioExplainer');
+
+        // Ring Circumference
+        const circumference = 2 * Math.PI * 120; // r=120
+        progressRing.style.strokeDasharray = `${circumference} ${circumference}`;
+        progressRing.style.strokeDashoffset = circumference;
+
+        // --- Audio Logic ---
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AudioContext();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        function playChime(type) {
+            if (!soundEnabled || !audioCtx) return;
+
+            const osc = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            const now = audioCtx.currentTime;
+
+            // Frequencies
+            let freq = 440; 
+            if (type === 'inhale') freq = 392.00; 
+            if (type === 'hold-full') freq = 329.63; 
+            if (type === 'exhale') freq = 261.63; 
+            if (type === 'hold-empty') freq = 196.00;
+            if (type === 'zen-start') freq = 110.00; // Deep low chime for meditation
+
+            osc.frequency.setValueAtTime(freq, now);
+            
+            // Envelope
+            gainNode.gain.setValueAtTime(0, now);
+            if(type === 'zen-start') {
+                 // Long fade in/out for Zen
+                gainNode.gain.linearRampToValueAtTime(0.4, now + 1); 
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 6);
+                osc.start(now);
+                osc.stop(now + 7);
+            } else {
+                gainNode.gain.linearRampToValueAtTime(0.2, now + 0.1); 
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 2);
+                osc.start(now);
+                osc.stop(now + 2.5);
+            }
+        }
+
+        // --- Zen Mode Logic ---
+
+        function enterZenMode() {
+            isZenMode = true;
+            zenStartTime = Date.now();
+            playChime('zen-start');
+            
+            // CSS Transitions
+            body.classList.add('meditation-mode');
+            
+            // Change Status Bar Color
+            themeColorMeta.setAttribute('content', '#0f172a');
+            
+            // UI Cleanup
+            phaseLabel.textContent = "Meditation";
+            subInstruction.textContent = "";
+            timerDisplay.textContent = "00:00"; // Switch to count up
+            timerUnit.style.opacity = '0'; // Hide "Sec" label
+            
+            // Hide standard controls, Show Exit button
+            standardControls.style.opacity = '0';
+            standardControls.style.pointerEvents = 'none';
+            zenBtn.style.opacity = '0';
+            zenBtn.style.pointerEvents = 'none';
+            
+            exitZenBtn.style.opacity = '1';
+            exitZenBtn.style.pointerEvents = 'auto';
+
+            // Override color
+            phaseLabel.className = `text-2xl font-light mb-1 h-8 transition-colors text-slate-400`;
+        }
+
+        function exitZenMode() {
+            isZenMode = false;
+            body.classList.remove('meditation-mode');
+            themeColorMeta.setAttribute('content', '#e0f7fa');
+            
+            // UI Restore
+            timerUnit.style.opacity = '0.8';
+            standardControls.style.opacity = '1';
+            standardControls.style.pointerEvents = 'auto';
+            zenBtn.style.opacity = '1';
+            zenBtn.style.pointerEvents = 'auto';
+            
+            exitZenBtn.style.opacity = '0';
+            exitZenBtn.style.pointerEvents = 'none';
+
+            // Reset engine
+            pauseTimer(); 
+            phaseLabel.textContent = "Paused";
+            subInstruction.textContent = "Press play to resume breathing";
+            animateOrb('reset', 0);
+        }
+
+        // --- Core Timer Engine ---
+
+        function updateUI(timestamp) {
+            
+            // 1. ZEN MODE LOOP
+            if (isZenMode) {
+                const zenElapsed = Date.now() - zenStartTime;
+                const m = Math.floor(zenElapsed / 60000);
+                const s = Math.floor((zenElapsed % 60000) / 1000);
+                timerDisplay.textContent = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+                
+                animationFrameId = requestAnimationFrame(updateUI);
+                return;
+            }
+
+            // 2. PRANAYAMA LOOP
+            if (!isRunning) return;
+
+            const currentPhase = phases[currentPhaseIndex];
+            const phaseDuration = currentPhase.ratio * baseUnit * 1000;
+            
+            let elapsedInPhase = timestamp - phaseStartTime;
+
+            // Phase Complete
+            if (elapsedInPhase >= phaseDuration) {
+                
+                let cycleComplete = false;
+                if (currentMode === 'nadi' && currentPhase.type === 'exhale') cycleComplete = true;
+                if (currentMode === 'sama' && currentPhaseIndex === 3) cycleComplete = true;
+
+                if (cycleComplete) {
+                    cycles++;
+                    cycleCountDisplay.textContent = cycles;
+                    cycleCountDisplay.classList.remove('pop-anim');
+                    void cycleCountDisplay.offsetWidth;
+                    cycleCountDisplay.classList.add('pop-anim');
+                }
+
+                currentPhaseIndex++;
+                if (currentPhaseIndex >= phases.length) currentPhaseIndex = 0;
+                
+                phaseStartTime = timestamp;
+                elapsedInPhase = 0;
+                
+                const nextPhase = phases[currentPhaseIndex];
+                updatePhaseVisuals(nextPhase);
+                playChime(nextPhase.type);
+            }
+
+            // Visual Updates
+            const progress = Math.min(elapsedInPhase / phaseDuration, 1);
+            const remainingSeconds = Math.ceil((phaseDuration - elapsedInPhase) / 1000);
+            
+            timerDisplay.textContent = remainingSeconds;
+            
+            const offset = circumference - (progress * circumference);
+            progressRing.style.strokeDashoffset = offset;
+
+            const totalElapsed = Date.now() - sessionStartTime - totalElapsedPaused;
+            const minutes = Math.floor(totalElapsed / 60000);
+            const seconds = Math.floor((totalElapsed % 60000) / 1000);
+            totalTimeDisplay.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            animateOrb(phases[currentPhaseIndex].type, progress);
+
+            animationFrameId = requestAnimationFrame(updateUI);
+        }
+
+        function animateOrb(type, progress) {
+            if (isZenMode) return; // Handled by CSS animation
+
+            let scale = 1;
+            let filter = '';
+
+            if (type === 'inhale') {
+                scale = 1 + (progress * 0.5); 
+                filter = 'hue-rotate(0deg)'; 
+            } else if (type === 'hold-full') {
+                scale = 1.5 + (Math.sin(progress * Math.PI * 2) * 0.02);
+                filter = 'hue-rotate(40deg)'; 
+            } else if (type === 'exhale') {
+                if (currentMode === 'sama') {
+                    scale = 1.5 - (progress * 0.7); 
+                } else {
+                    scale = 1.5 - (progress * 0.5); 
+                }
+                filter = 'hue-rotate(90deg)'; 
+            } else if (type === 'hold-empty') {
+                scale = 0.8 + (Math.sin(progress * Math.PI * 2) * 0.01);
+                filter = 'grayscale(100%) brightness(120%)'; 
+            } else if (type === 'reset') {
+                scale = 1;
+                filter = 'none';
+            }
+            
+            breathOrb.style.transform = `scale(${scale})`;
+            breathOrb.style.filter = filter;
+        }
+
+        function updatePhaseVisuals(phase) {
+            phaseLabel.textContent = phase.name;
+            subInstruction.textContent = phase.hand;
+            
+            let colorClass = "text-slate-700";
+            if(phase.type === 'inhale') colorClass = "text-sky-600";
+            if(phase.type === 'hold-full') colorClass = "text-indigo-500";
+            if(phase.type === 'exhale') colorClass = "text-emerald-600";
+            if(phase.type === 'hold-empty') colorClass = "text-slate-500";
+
+            phaseLabel.className = `text-2xl font-medium mb-1 h-8 transition-colors ${colorClass}`;
+        }
+
+        // --- Controls ---
+
+        function startTimer() {
+            initAudio();
+            isRunning = true;
+            
+            toggleBtn.innerHTML = '<i class="fas fa-pause"></i>';
+            toggleBtn.className = "w-16 h-16 rounded-full bg-amber-400 hover:bg-amber-300 text-white shadow-lg shadow-amber-200 flex items-center justify-center text-xl transition-all transform hover:scale-105 active:scale-95";
+
+            // Show Zen Button
+            zenBtn.style.opacity = '1';
+            zenBtn.style.pointerEvents = 'auto';
+            zenBtn.style.transform = 'scale(1)';
+
+            if (sessionStartTime === 0) {
+                sessionStartTime = Date.now();
+                phaseStartTime = performance.now();
+                currentPhaseIndex = 0;
+                updatePhaseVisuals(phases[0]);
+                playChime(phases[0].type);
+            } else {
+                lastPauseTime = lastPauseTime || Date.now();
+                const pauseDuration = Date.now() - lastPauseTime;
+                totalElapsedPaused += pauseDuration;
+                phaseStartTime = performance.now() - lastPhaseProgress;
+            }
+
+            animationFrameId = requestAnimationFrame(updateUI);
+        }
+
+        function pauseTimer() {
+            isRunning = false;
+            cancelAnimationFrame(animationFrameId);
+            lastPauseTime = Date.now();
+            lastPhaseProgress = performance.now() - phaseStartTime;
+
+            toggleBtn.innerHTML = '<i class="fas fa-play pl-1"></i>';
+            toggleBtn.className = "w-16 h-16 rounded-full bg-sky-500 hover:bg-sky-400 text-white shadow-lg shadow-sky-200 flex items-center justify-center text-xl transition-all transform hover:scale-105 active:scale-95";
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            sessionStartTime = 0;
+            totalElapsedPaused = 0;
+            currentPhaseIndex = 0;
+            cycles = 0;
+            lastPhaseProgress = 0;
+            lastPauseTime = 0;
+            
+            cycleCountDisplay.textContent = '0';
+            totalTimeDisplay.textContent = '00:00';
+            timerDisplay.textContent = '0';
+            phaseLabel.textContent = 'Ready';
+            subInstruction.textContent = 'Select mode and begin';
+            breathOrb.style.transform = 'scale(1)';
+            breathOrb.style.filter = 'none';
+            progressRing.style.strokeDashoffset = circumference;
+            phaseLabel.className = "text-2xl font-medium text-slate-700 mb-1 h-8";
+            cycleCountDisplay.classList.remove('pop-anim');
+            
+            // Hide Zen Button
+            zenBtn.style.opacity = '0';
+            zenBtn.style.pointerEvents = 'none';
+            zenBtn.style.transform = 'scale(0.75)';
+        }
+
+        // --- Event Listeners ---
+
+        toggleBtn.addEventListener('click', () => {
+            if (isRunning) pauseTimer();
+            else startTimer();
+        });
+
+        resetBtn.addEventListener('click', resetTimer);
+
+        zenBtn.addEventListener('click', enterZenMode);
+        exitZenBtn.addEventListener('click', exitZenMode);
+
+        soundToggle.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            soundToggle.innerHTML = soundEnabled ? 
+                '<i class="fas fa-volume-up text-lg"></i>' : 
+                '<i class="fas fa-volume-mute text-lg text-slate-300"></i>';
+        });
+
+        settingsToggle.addEventListener('click', () => {
+            updateExplainer();
+            settingsPanel.classList.remove('opacity-0', 'pointer-events-none');
+        });
+
+        closeSettings.addEventListener('click', () => {
+            settingsPanel.classList.add('opacity-0', 'pointer-events-none');
+        });
+
+        baseUnitInput.addEventListener('input', (e) => {
+            baseUnit = parseInt(e.target.value);
+            baseUnitDisplay.textContent = baseUnit;
+            updateExplainer();
+        });
+
+        modeSelect.addEventListener('change', (e) => {
+            resetTimer();
+            currentMode = e.target.value;
+            phases = MODES[currentMode].getPhases();
+            ratioBadge.textContent = MODES[currentMode].ratioText;
+        });
+
+        function updateExplainer() {
+            const m = MODES[currentMode];
+            if (currentMode === 'nadi') {
+                ratioExplainer.innerHTML = `<strong>${m.name}:</strong> Ratio 1:4:2.<br>Inhale: ${baseUnit}s, Hold: ${baseUnit*4}s, Exhale: ${baseUnit*2}s.`;
+            } else {
+                ratioExplainer.innerHTML = `<strong>${m.name}:</strong> Ratio 1:1:1:1.<br>Inhale: ${baseUnit}s, Hold: ${baseUnit}s, Exhale: ${baseUnit}s, Empty: ${baseUnit}s.`;
+            }
+        }
+        
+        updateExplainer();
+
+    </script>
+</body>
+</html>
